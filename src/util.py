@@ -31,70 +31,70 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 
 def check_AA(string):
-	"""If given string contains asci art(sjis art), returns True.
-	"""
-	if not string.find(u' 　') == -1:
-		return True
-	else:
-		return False
+    """If given string contains asci art(sjis art), returns True.
+    """
+    if not string.find(u' 　') == -1:
+        return True
+    else:
+        return False
 
 
 def check_code(string):
-	"""If given string contains source code, returns True."""
-	if not string.find(u'    ') == -1:
-		return True
-	else:
-		return False
+    """If given string contains source code, returns True."""
+    if not string.find(u'    ') == -1:
+        return True
+    else:
+        return False
 
 
 def extract_url(text):
-	""" Returns url list extract from given text.
-	"""
-	urls = []
-	end = 0
-	url_regex = re.compile(u'(h?)(ttp|ttps)(://[^\\s|^<]+)')
-	while True:
-		match = url_regex.search(text[end:])
-		if match:
-			f = match.groups()
-			urls.append('h'+f[1]+f[2])
-			end = end + match.end()-1
-		else:
-			break
-	return urls
+    """ Returns url list extract from given text.
+    """
+    urls = []
+    end = 0
+    url_regex = re.compile(u'(h?)(ttp|ttps)(://[^\\s|^<]+)')
+    while True:
+        match = url_regex.search(text[end:])
+        if match:
+            f = match.groups()
+            urls.append('h'+f[1]+f[2])
+            end = end + match.end()-1
+        else:
+            break
+    return urls
 
 def get_be_id(be_number):
-	"""Returns 2ch be basic number.
-	"""
-	benum = int(be_number)
-	beid = ((benum/100) + ((benum/10) % 10) - (benum % 10) - 5) / (((benum/10) % 10) * (benum % 10) * 3)
-	return str(beid)
+    """Returns 2ch be basic number.
+    """
+    benum = int(be_number)
+    beid = ((benum/100) + ((benum/10) % 10) - (benum % 10) - 5) / (((benum/10) % 10) * (benum % 10) * 3)
+    return str(beid)
 
 def search_next_thread(thread):
-	parent_board = thread.parent
-	title = thread.title
-	search_text_list= []
-	text_length = 16
-	while True:
-		if text_length <= 0:
-			return []
-		if len(title) > text_length-1:
-			for index in range(len(title)-text_length):
-				search_text_list.append(title[index:index+text_length])
-		else:
-				search_text_list = [title]
-		match_thread_list = []
-		for next_thread_candidate in parent_board:
-			if not next_thread_candidate.rank == 10000:
-				for search_text in search_text_list:
-					if next_thread_candidate == thread:
-						break
-					if next_thread_candidate.title.count(search_text):
-						match_thread_list.append(next_thread_candidate)
-						break
-		if match_thread_list:
-			return match_thread_list
-		else:
-			text_length = text_length - 4
+    parent_board = thread.parent
+    title = thread.title
+    search_text_list= []
+    text_length = 16
+    while True:
+        if text_length <= 0:
+            return []
+        if len(title) > text_length-1:
+            for index in range(len(title)-text_length):
+                search_text_list.append(title[index:index+text_length])
+        else:
+                search_text_list = [title]
+        match_thread_list = []
+        for next_thread_candidate in parent_board:
+            if not next_thread_candidate.rank == 10000:
+                for search_text in search_text_list:
+                    if next_thread_candidate == thread:
+                        break
+                    if next_thread_candidate.title.count(search_text):
+                        match_thread_list.append(next_thread_candidate)
+                        break
+        if match_thread_list:
+            return match_thread_list
+        else:
+            text_length = text_length - 4
 
 
