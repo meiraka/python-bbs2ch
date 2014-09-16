@@ -70,8 +70,9 @@ class UnknownError(Error):
 
 class HTTP(object):
     """Simple event-driven http client."""
-    pass
-
+    def __init__(self):
+        self.user_agent = 'Monazilla/1.00 (python-bbs2ch/%s)' % version.__VERSION__
+    
     def split_url(self, url):
         """Splits url to hostname and http path."""
         re_http_url = re.compile('http://(.+)')
@@ -82,11 +83,11 @@ class HTTP(object):
         path = '/'+path
         return (host, path)
 
-    def generate_headers(self, add_headers=None):
+    def __generate_headers(self, add_headers=None):
         """Generate http header."""
         headers = [
             ('Accept-Language', 'ja'),
-            ('User-Agent', 'Monazilla/1.00 (python-bbs2ch/%s)' % version.__VERSION__),
+            ('User-Agent', self.user_agent),
             ('Connection', 'close')
             ]
         if add_headers:
@@ -96,8 +97,8 @@ class HTTP(object):
             string = string + key + ': ' + value + '\r\n'
         return string[:-1]
 
-    def generate_request(self, uri, method='GET'):
-        return method+ ' ' + str(uri) + ' HTTP/1.1'
+    def generate_request_headers(self, uri, add_headers=None, method='GET'):
+        return method+ ' ' + str(uri) + ' HTTP/1.1' + '\r\n' + self.__generate_headers(add_headers)
 
     def talk(self, host, request_headers, request_body='', encode='ms932', callback=None):
         """Talk to host with given http path.
@@ -218,16 +219,15 @@ class Browser(object):
 
     def get_new_board_url(self, board_url):
         host, uri = self.http.split_url(board_url)
-        request = self.http.generate_request(uri)
         add_headers = [
             ('Host', host),
             ('Accept', '*/*'),
             ('Referer', host),
             ('Accept-Encoding', 'gzip'),
             ]
-        request_headers = self.http.generate_headers(add_headers)
+        request_headers = self.http.generate_request_headers(uri, add_headers)
         response_headers, response_body, length = self.http.talk(
-                host, request+'\r\n'+request_headers)
+                host, request_headers)
         url = re.compile(u'window.location.href="(http://[^/]+/[^/]+/)"</script>')
         for line in response_body.split(u'\n'):
             match = url.search(line)
@@ -239,16 +239,15 @@ class Browser(object):
         """Get board list."""
         #split menu_url to host and url
         host, uri = self.http.split_url(menu_url)
-        request = self.http.generate_request(uri)
         add_headers = [
             ('Host', host),
             ('Accept', '*/*'),
             ('Referer', host),
             ('Accept-Encoding', 'gzip'),
             ]
-        request_headers = self.http.generate_headers(add_headers)
+        request_headers = self.http.generate_request_headers(uri, add_headers)
         response_headers, response_body, length = self.http.talk(
-                host, request+'\r\n'+request_headers, callback=status_callback)
+                host, request_headers, callback=status_callback)
         #Set filter regex for 2ch.net and bbspink.com
         re_category = re.compile(u'<BR><BR><B>([^<]+)</B><BR>')
         re_category2 = re.compile(u'<b>([^<]+)</b>')
@@ -282,33 +281,34 @@ class Browser(object):
     def board(self, board_url, status_callback=None):
         subject = board_url + u'subject.txt'
         host, uri = self.http.split_url(subject)
-        request = self.http.generate_request(uri)
         add_headers = [
             ('Host', host),
             ('Accept', '*/*'),
             ('Referer', board_url),
             ('Accept-Encoding', 'gzip'),
             ]
-        request_headers = self.http.generate_headers(add_headers)
+        request_headers = self.http.generate_request_headers(uri, add_headers)
         try:
+            print request_headers
             response_headers, response_body, length = self.http.talk(
                     host,
-                request+'\r\n'+request_headers,
+                request_headers,
                 callback=status_callback)
         except IOError:
             time.sleep(2)
+            print request_headers
             add_headers = [
                 ('Host', host),
                 ('Accept', '*/*'),
                 ('Referer', board_url),
                 ]
-            request_headers = self.http.generate_headers(add_headers)
+            request_headers = self.http.generate_request_headers(uri, add_headers)
             response_headers, response_body, length = self.http.talk(
                     host,
-                    request+'\r\n'+request_headers,
+                    request_headers,
                     callback=status_callback)
             
-
+        print response_headers
         re_threads = re.compile(u'(\\d+).dat<>(.+)\s\\((\\d+)\\)')
         thread_list = []
         for line in response_body.split(u'\n'):
@@ -316,7 +316,7 @@ class Browser(object):
             if match_threads:
                 thread_list.append(match_threads.groups())
         http, response_status, response_reason = response_headers.split('\n')[0].split(' ', 2)
-        return dict(    request_headers=request+'\n'+request_headers,
+        return dict(    request_headers=request_headers,
                 request_body=u'',
                 response_headers=response_headers,
                 response_body=response_body,
@@ -384,7 +384,6 @@ class Browser(object):
         board_name = self.http.split_url(board_url)[1]
         dat_url = board_url + u'dat/' + dat_id+'.dat'
         host, uri = self.http.split_url(dat_url)
-        request = self.http.generate_request(uri)
         response_headers = ''
         response_body = ''
         length = ''
@@ -397,31 +396,30 @@ class Browser(object):
                               ,('Referer', 'http://'+host+'/test/read.cgi'+board_name+dat_id+'/')
                               ,('Accept-Encoding', 'gzip')
                               ]
-                request_headers = self.http.generate_headers(add_headers)
+                request_headers = self.http.generate_request_headers(uri, add_headers)
                 response_headers, response_body, length = self.http.talk(
-                    host, request+'\r\n'+request_headers, callback=status_callback)
+                    host, request_headers, callback=status_callback)
             except IOError, err:
                 # normal full fetch if gzip decode failed.
                 add_headers = [('Host', host)
                               ,('Accept', '*/*')
                               ,('Referer', 'http://'+host+'/test/read.cgi'+board_name+dat_id+'/')
                               ]
-                request_headers = self.http.generate_headers(add_headers)
+                request_headers = self.http.generate_request_headers(uri, add_headers)
                 response_headers, response_body, length = self.http.talk(
-                    host, request+'\r\n'+request_headers, callback=status_callback)
+                    host, request_headers, callback=status_callback)
         else:
             # range fetch
             modified, range_bytes = modified_and_range
             add_headers = [('Host', host)
                           ,('Accept', '*/*')
                           ,('Referer', 'http://'+host+'/test/read.cgi'+board_name+dat_id+'/')
-                          ,('Accept-Encoding', 'gzip')
                           ,('If-Modified-Since', modified)
                           ,('Range', 'bytes='+str(range_bytes-1)+'-')
                           ]
-            request_headers = self.http.generate_headers(add_headers)
+            request_headers = self.http.generate_request_headers(uri, add_headers)
             response_headers, response_body, length = self.http.talk(
-               host, request+'\r\n'+request_headers, callback=status_callback)
+               host, request_headers, callback=status_callback)
 
         response_list = []
         thread_title = u''
@@ -471,7 +469,6 @@ class Browser(object):
         if hidden:
             request_body = request_body + '&' + hidden
 
-        request = self.http.generate_request('/test/bbs.cgi', 'POST')
         add_headers = [    ('Host', host),
                 ('Accept', '*/*'),
                 ('Referer', 'http://'+host+'/test/read.cgi'+board_name+dat_id+'/'),
@@ -480,9 +477,9 @@ class Browser(object):
                 ]
         if cookie:
             add_headers.append(('Cookie', cookie))
-        request_headers = self.http.generate_headers(add_headers)
+        request_headers = self.http.generate_request_headers('/test/bbs.cgi', add_headers, 'POST')
         response_headers, response_body, length = self.http.talk(
-            host, request+'\r\n'+request_headers, request_body)
+            host, request_headers, request_body)
 
         hidden = self.__check_hidden(response_body)
         status = self.__check_status(response_body)
