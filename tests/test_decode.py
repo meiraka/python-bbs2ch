@@ -15,3 +15,13 @@ def test_menu():
     assert (u'http://test2ch.net/hoge/', u'カテゴリ1', u'ほげ') == ret[0]
     assert (u'http://test2ch.net/fuga/', u'カテゴリ1', u'ふが') == ret[1]
     assert (u'http://test2ch.net/foo/', u'カテゴリ2', u'foo') == ret[2]
+
+
+def test_board_subject():
+    """Parse board subject.txt."""
+    body = u"""
+100.dat<>スレッド1 (2)
+200.dat<>スレッド2 (1000)"""
+    ret = list(decode.board_subject(body))
+    assert (u'100', u'スレッド1', 2) == ret[0]
+    assert (u'200', u'スレッド2', 1000) == ret[1]
