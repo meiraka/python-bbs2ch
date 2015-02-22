@@ -1,6 +1,7 @@
 """
 bbs2ch module version document.
-Copyright (c) 2011-2013 mei raka
+
+Copyright (c) 2011-2014 mei raka
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -26,5 +27,5 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 
-__VERSION__ = "2.1.1"
+__VERSION__ = "3.0.0"
 __version__ = __VERSION__
