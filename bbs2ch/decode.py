@@ -35,14 +35,12 @@ def menu(body):
     :param body: 2ch menu html string
     :rtype: board url, category, board title tupled list
     """
-    re_category = re.compile(u'<BR><BR><B>([^<]+)</B><BR>')
-    re_category2 = re.compile(u'<b>([^<]+)</b>')
+    re_category = re.compile(u'<B>([^<]+)</B><BR>')
     re_board_url = re.compile(u'<A HREF=(http://'
                               u'[^/]+/[^/]+/)>([^<]+)<')
     current_category = None
     for line in body.split(u'\n'):
-        match_category = (re_category.match(line) or
-                          re_category2.search(line))
+        match_category = re_category.search(line)
         if match_category:
             current_category = match_category.groups()[0]
         if current_category:
