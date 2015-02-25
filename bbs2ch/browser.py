@@ -38,7 +38,10 @@ DEFAULT_USERAGENT = u'Monazilla/1.00 (python-bbs2ch/%s)' % version.__VERSION__
 
 class CookieBucket(object):
 
-    """bbs Cookie container."""
+    """bbs Cookie container.
+
+    FIXME: All methods
+    """
 
     def __init__(self, cookie_dump=''):
         """Initialize cookie data from dumped CookieBucket."""
