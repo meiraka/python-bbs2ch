@@ -1,5 +1,5 @@
-"""
-2ch bbs response decoder.
+"""2ch bbs response decoder.
+
 Copyright (c) 2011-2014 mei raka
 All rights reserved.
 
@@ -27,6 +27,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 
 import re
+
+WRITE_ERROR = 0
+WRITE_OK = 1
+WRITE_COOKIE = 2
 
 
 def menu(body):
@@ -85,3 +89,30 @@ def thread_dat(body):
             message = u'can not understand this line:</br> %' % (
                 line.replace(u'<>', u'&lt;&gt;'))
             yield (name, mail, date_id, message)
+
+
+def thread_write(body):
+    """Get write status.
+
+    :param body: 2ch /test/bbs.cgi response body string
+    :rtype: status string, true, error, cookie
+    """
+    re_status = re.compile(u'<\\!--\\s2ch_X:([^\\s]+)\\s-->')
+    match = re_status.search(body)
+    if match:
+        return match.group(1).lower()
+
+
+def thread_write_form(body):
+    """Get 'hidden' key and value from html."""
+    re_hidden = re.compile(
+        u'input\\stype=hidden\\s+name="([^"]+)"\\svalue="([^"]+)"')
+    hidden = None
+    for i in body.split(u'<'):
+        search = re_hidden.search(i)
+        if search:
+            hidden = search.groups()
+    if hidden:
+        return [(hidden[0], hidden[1])]
+    else:
+        return []

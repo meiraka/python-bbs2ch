@@ -31,6 +31,7 @@ import re
 import socket
 import StringIO
 import gzip
+import urllib
 
 
 def host_path(url):
@@ -44,7 +45,19 @@ def host_path(url):
     return (host, path)
 
 
-def encode_request(method, path, header=[], body=[], encoding='ascii'):
+def urlencode(string):
+    """Return % encoded string."""
+    def _enc(char):
+        num = ord(char)
+        if num == 20:
+            return u'+'
+        else:
+            return '{}2'
+            
+    return ''.join([char for char in string])
+
+
+def encode_request(method, path, header, body=[], encoding='ascii'):
     """encode request data to http request string.
 
     :param method: http method type.
@@ -56,11 +69,18 @@ def encode_request(method, path, header=[], body=[], encoding='ascii'):
     :rtype: str
     """
     request_string = '%s %s HTTP/1.1' % (method, path)
-    header_string = '\r\n'.join(
-        ['%s: %s' % tuple([i.encode(encoding) for i in kv]) for kv in header])
     body_string = '&'.join(
-        ['%s=%s' % tuple([i.encode(encoding) for i in kv]) for kv in body])
-    return '%s\r\n%s\r\n\r\n%s' % (request_string, header_string, body_string)
+        ['%s=%s' % tuple([urllib.quote(i.encode(encoding)) for i in kv])
+            for kv in body])
+    if body_string:
+        header.append((u'Content-Type', u'application/x-www-form-urlencoded'))
+        header.append((u'Content-Length', str(len(body_string))))
+    print header
+    header_string = '\r\n'.join(
+        ['{}: {}'.format(k.encode(encoding), v.encode(encoding))
+         for k, v in header])
+    return '{}\r\n{}\r\n\r\n{}\r\n'.format(
+        request_string, header_string, body_string)
 
 
 def send(host, request, port=80, timeout=20.0):
@@ -75,7 +95,7 @@ def send(host, request, port=80, timeout=20.0):
     connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     connection.settimeout(timeout)
     connection.connect((host, port))
-    connection.send(request)
+    connection.send(str(request))
     return connection
 
 
@@ -116,6 +136,8 @@ def recv(connection, timeout=2.0, buffersize=2048, callback=None):
 
 
 def _convert_http_charset_to_python_charset(charset):
+    if charset.startswith('x-'):
+        charset = charset.replace('x-', '')
     dirty_charsets = {'shift_jis': 'ms932'}
     return (charset if charset not in dirty_charsets
             else dirty_charsets[charset])
@@ -161,9 +183,9 @@ def _decode_media_type(value):
         return [i.strip() for i in typeparam[0].split(u'/', 1)] + [{}]
     else:
         return [i.strip() for i in typeparam[0].split(u'/', 1)] + [
-            [[j.strip() for j in i.strip().split(u'=')]
-             for i in typeparam[1].split(u';')
-             if len(i.strip().split(u'=')) == 2]]
+            dict([[j.strip() for j in i.strip().split(u'=')]
+                 for i in typeparam[1].split(u';')
+                 if len(i.strip().split(u'=')) == 2])]
 
 
 def _extract_html_encoding(html):
@@ -185,6 +207,8 @@ def decode_response(response, fallback_encoding='ms932'):
     encoding = None
     header, body = response.split('\r\n\r\n', 1)
     length = len(body)
+    (httpver, snum, sstring) = header.splitlines()[0].split(' ', 2)
+    status = (httpver, int(snum), sstring)
     header_dict = dict(_decode_header(header, fallback_encoding))
     if (u'Content-Encoding' in header_dict and
             header_dict[u'Content-Encoding'] == u'gzip'):
@@ -196,13 +220,15 @@ def decode_response(response, fallback_encoding='ms932'):
         f.close()
     if u'Content-Type' in header_dict:
         # if content type includes charset, set encoding
-        content_params = dict(header_dict[u'Content-Type'][2])
+        content_params = header_dict[u'Content-Type'][2]
         if u'charset' in content_params:
-            encoding = content_params[u'charset']
+            encoding = _convert_http_charset_to_python_charset(
+                content_params[u'charset'])
         # if content type is text/html, read encoding from html meta tag
         main, sub = header_dict[u'Content-Type'][:2]
         if (main, sub) == (u'text', u'html'):
-            encoding = _extract_html_encoding(body)
+            encoding = _convert_http_charset_to_python_charset(
+                _extract_html_encoding(body))
     if not encoding:
         if fallback_encoding:
             # if force encoding, set encoding
@@ -211,4 +237,4 @@ def decode_response(response, fallback_encoding='ms932'):
             encoding = 'ascii'
 
     body = body.decode(encoding, errors='replace')
-    return (header_dict, body, length)
+    return (status, header_dict, body, length)
